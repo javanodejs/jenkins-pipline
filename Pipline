@@ -1,0 +1,41 @@
+node {
+   def mvnHome = '/opt/maven'
+   def deploy = '/home/deploy'
+  
+   stage('拉取代码') { // for display purposes
+      git branch: 'develop', url: 'http://192.168.1.181/tanghuaizhe/FESS_DEVELOP.git'
+   }
+   stage('编译') {
+      // Run the maven build
+      if (isUnix()) {
+         sh "'${mvnHome}/bin/mvn' clean"
+         echo 'mvn clean'
+      } else {
+         bat(/"${mvnHome}\bin\mvn" -Dmaven.test.failure.ignore clean package/)
+      }
+   }
+   stage('测试'){
+       CMD = "'${mvnHome}/bin/mvn' test"
+       sh CMD
+   }
+   stage('打包'){
+       
+       sh "'${mvnHome}/bin/mvn' package -D maven.javadoc.skip=true -DskipTests"
+       //sh "cp /root/.jenkins/workspace/111/target/speed3d-jar-with-dependencies.jar /home/deploy"
+   }
+   stage('上传'){
+       
+       sh "'${mvnHome}/bin/mvn' deploy -D maven.javadoc.skip=true -DskipTests"
+       
+   }
+   stage('部署') {
+       sh "${deploy}/stop.sh"
+       sh "cd /root/.jenkins/workspace/FESS_DEVELOP/target/ && ls"
+       sh "JENKINS_NODE_COOKIE=dontKillMe nohup java -jar /root/.jenkins/workspace/FESS_DEVELOP/target/speed3d.jar > /root/speed_build_3d.log &"
+   }
+   stage('Results') {
+      //junit '**/target/surefire-reports/TEST-*.xml'
+      //archive 'target/*.jar'
+      echo 'exit'
+   }
+}
